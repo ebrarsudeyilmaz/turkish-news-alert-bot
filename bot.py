@@ -1,24 +1,4 @@
 
-"""
-Anahtar kelime bazlı Telegram haber botu (veritabanısız / bellek-içi sürüm).
- 
-Komutlar:
-  /start        - botu bu sohbette etkinleştirir
-  /ekle KELIME  - takip listesine kelime ekler
-  /sil KELIME   - takip listesinden kelime çıkarır
-  /liste        - mevcut kelimeleri gösterir
- 
-Not: Kelimeler ve "gönderildi" kaydı sadece bellekte (RAM) tutulur.
-Yani bot yeniden başlarsa (kod güncellenir, sunucu yeniden başlar, çöker
-vb.) bu bilgiler sıfırlanır: kelimeleri yeniden eklemen gerekir ve bir
-sonraki taramada bazı haberler ilk kez geliyormuş gibi tekrar gönderilebilir.
- 
-Kurulum:
-  pip install "python-telegram-bot[job-queue]" feedparser
-  export TELEGRAM_BOT_TOKEN="BotFather'dan aldığın token"
-  python bot.py
-"""
- 
 import logging
 import os
  
@@ -35,10 +15,7 @@ logger = logging.getLogger(__name__)
  
 TR_MAP = str.maketrans("İIŞŞĞÜÖÇ", "iışşğüöç")
  
-# ---------- Bellek-içi durum ----------
-# chat_id -> set(kelime)
 CHAT_KEYWORDS: dict[int, set[str]] = {}
-# chat_id -> set(gönderilen link)
 SENT_LINKS: dict[int, set[str]] = {}
  
  
@@ -47,7 +24,6 @@ def normalize(text: str) -> str:
     return text.translate(TR_MAP).lower()
  
  
-# ---------- Komutlar ----------
  
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -100,18 +76,14 @@ async def liste(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Takip ettiğin kelimeler:\n" + "\n".join(f"• {k}" for k in keywords))
  
  
-# ---------- Tarama işi (bulunan tüm eşleşmeler tek mesajda toplanır) ----------
  
-TELEGRAM_MAX_LEN = 3500  # Telegram limiti 4096; güvenli pay bırakıyoruz
- 
+TELEGRAM_MAX_LEN = 3500
  
 def _format_entry(source_name: str, title: str, link: str, matched: list[str]) -> str:
     return f"📰 [{source_name}] {title}\n🔑 {', '.join(matched)}\n{link}"
  
  
 def _build_bundle_messages(items: list[tuple]) -> list[str]:
-    """Eşleşen haberleri, Telegram karakter limitini aşmayacak şekilde
-    bir ya da birkaç mesaja böler (çoğu zaman tek mesaj olur)."""
     header = f"🗞️ {len(items)} yeni haber eşleşmesi\n\n"
     messages = []
     current = header
@@ -130,7 +102,6 @@ async def check_feeds(context: ContextTypes.DEFAULT_TYPE):
     if not CHAT_KEYWORDS:
         return
  
-    # chat_id -> [(source_name, title, link, matched_keywords), ...]
     chat_matches: dict[int, list[tuple]] = {}
  
     for source_name, feed_url in RSS_FEEDS:
@@ -162,8 +133,6 @@ async def check_feeds(context: ContextTypes.DEFAULT_TYPE):
                     continue
  
                 chat_matches.setdefault(chat_id, []).append((source_name, title, link, matched))
-                # Aynı taramada iki kez eklenmesin ve bir sonraki
-                # taramada tekrar gönderilmesin diye hemen işaretliyoruz.
                 sent.add(link)
  
     for chat_id, items in chat_matches.items():
