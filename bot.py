@@ -1,4 +1,4 @@
-
+import html
 import logging
 import os
  
@@ -80,7 +80,10 @@ async def liste(update: Update, context: ContextTypes.DEFAULT_TYPE):
 TELEGRAM_MAX_LEN = 3500
  
 def _format_entry(source_name: str, title: str, link: str, matched: list[str]) -> str:
-    return f"📰 [{source_name}] {title}\n🔑 {', '.join(matched)}\n{link}"
+    safe_source = html.escape(source_name)
+    safe_title = html.escape(title)
+    safe_matched = html.escape(", ".join(matched))
+    return f'📰 [{safe_source}] <a href="{link}">{safetitle}</a>\n🔑 {safe_matched}'
  
  
 def _build_bundle_messages(items: list[tuple]) -> list[str]:
@@ -138,7 +141,12 @@ async def check_feeds(context: ContextTypes.DEFAULT_TYPE):
     for chat_id, items in chat_matches.items():
         for text in _build_bundle_messages(items):
             try:
-                await context.bot.send_message(chat_id=chat_id, text=text)
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+               )
             except Exception as e:
                 logger.warning("Mesaj gönderilemedi (chat %s): %s", chat_id, e)
  
